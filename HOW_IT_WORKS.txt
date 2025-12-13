@@ -1,0 +1,35 @@
+MONA SYNTHETIC STOCK TRADING PLATFORM - SYSTEM ARCHITECTURE AND WORKFLOW
+
+1. INTRODUCTION
+Mona is a decentralized synthetic asset trading platform built on the Monad Testnet. It allows users to trade synthetic versions of real-world assets (stocks, commodities, cryptocurrencies) using a stablecoin (MockUSD) without leaving the blockchain ecosystem. The project demonstrates the speed and efficiency of the Monad network by providing a near-instant trading experience similar to centralized exchanges, but with full self-custody.
+
+2. SYSTEM ARCHITECTURE
+The platform consists of two main layers: the Smart Contract layer (Solidity) handling logic/value, and the Frontend layer (React/Vite) handling user interaction and data visualization.
+
+A. THE BANKING SYSTEM (On-Ramp/Off-Ramp)
+The entry point for any user is the "Bank" contract.
+- Deposit: Users send native MON tokens to the Bank contract. The Bank calculates the exchange rate (fixed at 1 MON = 100 USD for simplicity) and mints an equivalent amount of MockUSD (mUSD) to the user's wallet.
+- Withdraw: Users can burn their mUSD tokens to redeem MON from the Bank's reserves. This ensures that the stablecoin is always backed by native assets in the Bank contract.
+
+B. THE TRADING ENGINE
+The core trading logic is split between the `SyntheticStockFactory` and the `LightningDEX`.
+- SyntheticStockFactory: This contract is responsible for deploying new synthetic assets. Each asset (e.g., mAAPL, mBTC) is its own ERC-20 token contract. This ensures standard compatibility with wallets and other DeFi protocols.
+- LightningDEX: This is the central exchange contract. It facilitates the swapping of mUSD for synthetic tokens. Unlike traditional AMMs (like Uniswap) that use liquidity pools, this DEX currently uses a simplified "Oracle Pricing" model for the purpose of the demo. Infinite liquidity is simulated at the current oracle price, allowing users to buy/sell any amount without slippage, provided the oracle price is valid.
+
+C. THE ORACLE SYSTEM & DATA FEEDS
+To function correctly, the blockchain needs to know real-world prices.
+- PriceOracle: A smart contract that stores the latest prices for all supported assets.
+- Data Synchronization: The frontend fetches real-time market data from the Finnhub API (or generates realistic mock data if the API limit is reached). It then "syncs" these prices to the PriceOracle contract via a transaction. This "Oracle Update" ensures that the on-chain trading price matches the real-world market price.
+
+D. USER INTERFACE (Frontend)
+The frontend is built with React, Vite, and Tailwind CSS, featuring a custom "Retro Pop / Bollywood" theme.
+- Wallet Integration: Uses Wagmi and RainbowKit to connect to the user's MetaMask wallet.
+- State Management: React Hooks (`useReferesh`) poll the blockchain for updated balances and prices every few seconds.
+- Visualization: Recharts is used to render dynamic price charts, giving users a visual representation of market trends.
+
+3. TYPICAL USER JOURNEY
+1. Connection: The user connects their wallet to the Monad Testnet.
+2. Onboarding: If they have no funds, they use the "Deposit" feature to convert testnet MON into trading capital (mUSD).
+3. Trading: The user selects an asset (e.g., Apple). The frontend pulls the live price. The user enters an amount and confirms the transaction. The DEX creates the synthetic tokens and sends them to the user, taking mUSD in return.
+4. Portfolio Management: The user watches their portfolio value fluctuate in real-time.
+5. Exit: To cash out, the user sells the synthetic assets back to the DEX for mUSD, and then withdraws the mUSD via the Bank to get native MON back.
