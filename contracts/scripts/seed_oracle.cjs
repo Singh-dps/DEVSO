@@ -1,0 +1,53 @@
+const fs = require('fs');
+const path = require('path');
+const { ethers } = require('hardhat');
+
+// Hardcoded copy of TOP_STOCKS symbols to avoid importing TS file in JS script
+const TOP_STOCKS = [
+    'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META', 'BRK.B', 'TSM', 'V',
+    'JNJ', 'WMT', 'JPM', 'XOM', 'PG', 'MA', 'UNH', 'HD', 'CVX', 'MRK',
+    'ABBV', 'LLY', 'KO', 'AVGO', 'PEP', 'PFE', 'COST', 'ORCL', 'TMO', 'MCD',
+    'DIS', 'NKE', 'CSCO', 'VZ', 'DHR', 'CRM', 'ADBE', 'ABT', 'NFLX', 'AMD',
+    'INTC', 'QCOM', 'IBM', 'TXN', 'PM', 'MS', 'CAT', 'BA', 'GS', 'HON',
+    'ETH', 'BTC'
+];
+
+async function main() {
+    const contractContractsPath = path.join(__dirname, '../../frontend/src/contractContracts.json');
+    if (!fs.existsSync(contractContractsPath)) {
+        console.error('Contract address file not found');
+        process.exit(1);
+    }
+
+    const { PriceOracle: oracleAddress } = JSON.parse(fs.readFileSync(contractContractsPath, 'utf8'));
+    console.log(`Seeding Oracle at ${oracleAddress}...`);
+
+    const PriceOracle = await ethers.getContractFactory("PriceOracle");
+    const oracle = PriceOracle.attach(oracleAddress);
+
+    // Seed prices
+    // 8 decimals. $150.00 = 15000000000
+    for (const symbol of TOP_STOCKS) {
+        // Generate a pseudo-random realistic price between $50 and $500 based on char code
+        const basePrice = symbol.charCodeAt(0) * 2 + (symbol.length * 10);
+        const price = ethers.parseUnits(basePrice.toString(), 8);
+
+        console.log(`Setting price for ${symbol} to $${basePrice}`);
+        const tx = await oracle.updatePrice(symbol, price);
+        await tx.wait();
+    }
+
+    // Also explicitly set some majors to known values
+    await (await oracle.updatePrice('AAPL', ethers.parseUnits('175', 8))).wait();
+    await (await oracle.updatePrice('TSLA', ethers.parseUnits('240', 8))).wait();
+    await (await oracle.updatePrice('NVDA', ethers.parseUnits('460', 8))).wait();
+    await (await oracle.updatePrice('ETH', ethers.parseUnits('2200', 8))).wait();
+    await (await oracle.updatePrice('BTC', ethers.parseUnits('42000', 8))).wait();
+
+    console.log("Oracle seeded successfully!");
+}
+
+main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});
